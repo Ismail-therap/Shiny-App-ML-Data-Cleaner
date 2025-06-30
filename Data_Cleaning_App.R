@@ -5,6 +5,7 @@ library(DT)
 library(rmarkdown)
 library(stats)
 library(tidyr)
+library(rlang)
 
 # Built-in datasets
 builtin_datasets <- list(
@@ -278,7 +279,7 @@ server <- function(input, output, session) {
         "output: ", ifelse(input$report_format == "PDF", "pdf_document", "html_document"), "\n",
         "params:\n  data: NA\n  dep_var: '", input$dep_var, "'\n---\n\n",
         "```{r setup, include=FALSE}\n",
-        "library(dplyr)\nlibrary(ggplot2)\n```\n\n",
+        "library(dplyr)\nlibrary(ggplot2)\nlibrary(rlang)\n```\n\n",
         "## Dataset Dimensions\n```{r, echo=", echo_setting, "}\ndim(params$data)\n```\n\n",
         "## Data Structure\n```{r, echo=", echo_setting, "}\nstr(params$data)\n```\n\n",
         "## Summary of Variables\n```{r, echo=", echo_setting, "}\nsummary(params$data[, names(params$data) != params$dep_var])\n```\n\n",
