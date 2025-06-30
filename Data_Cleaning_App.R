@@ -144,24 +144,40 @@ server <- function(input, output, session) {
     isolate({
       df <- rv$data
       var <- df[[input$dep_var]]
-      
+
       if (is.numeric(var)) {
-        renderPlot({
-          ggplot(df, aes_string(input$dep_var)) +
-            geom_histogram(bins = 30, fill = "steelblue", color = "white") +
-            theme_minimal() +
-            labs(title = paste("Distribution of", input$dep_var))
-        })
+        plotOutput("dep_plot")
       } else {
-        tab <- df %>%
-          count(!!sym(input$dep_var)) %>%
-          mutate(Proportion = round(n / sum(n), 3))
-        
-        renderDataTable({
-          datatable(tab)
-        })
+        dataTableOutput("dep_table")
       }
     })
+  })
+
+  output$dep_plot <- renderPlot({
+    req(input$analyze_btn)
+    req(input$dep_var)
+    df <- rv$data
+    var <- df[[input$dep_var]]
+    validate(need(is.numeric(var), "Dependent variable is not numeric."))
+
+    ggplot(df, aes_string(input$dep_var)) +
+      geom_histogram(bins = 30, fill = "steelblue", color = "white") +
+      theme_minimal() +
+      labs(title = paste("Distribution of", input$dep_var))
+  })
+
+  output$dep_table <- renderDataTable({
+    req(input$analyze_btn)
+    req(input$dep_var)
+    df <- rv$data
+    var <- df[[input$dep_var]]
+    validate(need(!is.numeric(var), "Dependent variable is not categorical."))
+
+    tab <- df %>%
+      count(!!sym(input$dep_var)) %>%
+      mutate(Proportion = round(n / sum(n), 3))
+
+    datatable(tab)
   })
   
   output$summary_output <- renderUI({
