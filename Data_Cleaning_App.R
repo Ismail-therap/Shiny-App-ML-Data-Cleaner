@@ -105,14 +105,13 @@ server <- function(input, output, session) {
   
   output$num_to_factor_ui <- renderUI({
     req(rv$data)
-    num_vars <- names(rv$data)[sapply(rv$data, is.numeric)]
-    selectInput("num2fac", "Convert Numeric to Factor:", choices = num_vars, multiple = TRUE)
+    non_factor_vars <- names(rv$data)[!sapply(rv$data, is.factor)]
+    selectInput("num2fac", "Convert to Factor:", choices = non_factor_vars, multiple = TRUE)
   })
   
   output$factor_to_num_ui <- renderUI({
     req(rv$data)
-    fac_vars <- names(rv$data)[sapply(rv$data, is.factor)]
-    selectInput("fac2num", "Convert Factor to Numeric:", choices = fac_vars, multiple = TRUE)
+    selectInput("fac2num", "Convert to Numeric:", choices = names(rv$data), multiple = TRUE)
   })
   
   observeEvent(input$convert_num2fac, {
@@ -125,7 +124,7 @@ server <- function(input, output, session) {
   observeEvent(input$convert_fac2num, {
     req(input$fac2num)
     for (var in input$fac2num) {
-      rv$data[[var]] <- as.numeric(as.character(rv$data[[var]]))
+      rv$data[[var]] <- suppressWarnings(as.numeric(as.character(rv$data[[var]])))
     }
   })
   
@@ -145,7 +144,7 @@ server <- function(input, output, session) {
     isolate({
       df <- rv$data
       var <- df[[input$dep_var]]
-
+      
       if (is.numeric(var)) {
         plotOutput("dep_plot")
       } else {
@@ -153,31 +152,31 @@ server <- function(input, output, session) {
       }
     })
   })
-
+  
   output$dep_plot <- renderPlot({
     req(input$analyze_btn)
     req(input$dep_var)
     df <- rv$data
     var <- df[[input$dep_var]]
     validate(need(is.numeric(var), "Dependent variable is not numeric."))
-
+    
     ggplot(df, aes_string(input$dep_var)) +
       geom_histogram(bins = 30, fill = "steelblue", color = "white") +
       theme_minimal() +
       labs(title = paste("Distribution of", input$dep_var))
   })
-
+  
   output$dep_table <- renderDataTable({
     req(input$analyze_btn)
     req(input$dep_var)
     df <- rv$data
     var <- df[[input$dep_var]]
     validate(need(!is.numeric(var), "Dependent variable is not categorical."))
-
+    
     tab <- df %>%
       count(!!sym(input$dep_var)) %>%
       mutate(Proportion = round(n / sum(n), 3))
-
+    
     datatable(tab)
   })
   
@@ -278,16 +277,28 @@ server <- function(input, output, session) {
         "title: 'Data Cleaning Summary'\n",
         "output: ", ifelse(input$report_format == "PDF", "pdf_document", "html_document"), "\n",
         "params:\n  data: NA\n  dep_var: '", input$dep_var, "'\n---\n\n",
-        "```{r setup, include=FALSE}\n",
-        "library(dplyr)\nlibrary(ggplot2)\nlibrary(rlang)\n```\n\n",
-        "## Dataset Dimensions\n```{r, echo=", echo_setting, "}\ndim(params$data)\n```\n\n",
-        "## Data Structure\n```{r, echo=", echo_setting, "}\nstr(params$data)\n```\n\n",
-        "## Summary of Variables\n```{r, echo=", echo_setting, "}\nsummary(params$data[, names(params$data) != params$dep_var])\n```\n\n",
-        "## Missing Value Percentages\n```{r, echo=", echo_setting, "}\nsapply(params$data, function(x) sum(is.na(x))/length(x)) * 100\n```\n\n",
-        "## Dependent Variable Analysis\n```{r, echo=", echo_setting, "}\n",
+        "
+{r setup, include=FALSE}\n",
+        "library(dplyr)\nlibrary(ggplot2)\nlibrary(rlang)\n
+\n\n",
+        "## Dataset Dimensions\n
+{r, echo=", echo_setting, "}\ndim(params$data)\n
+\n\n",
+        "## Data Structure\n
+{r, echo=", echo_setting, "}\nstr(params$data)\n
+\n\n",
+        "## Summary of Variables\n
+{r, echo=", echo_setting, "}\nsummary(params$data[, names(params$data) != params$dep_var])\n
+\n\n",
+        "## Missing Value Percentages\n
+{r, echo=", echo_setting, "}\nsapply(params$data, function(x) sum(is.na(x))/length(x)) * 100\n
+\n\n",
+        "## Dependent Variable Analysis\n
+{r, echo=", echo_setting, "}\n",
         "if (is.numeric(params$data[[params$dep_var]])) {\n",
         "  ggplot(params$data, aes_string(params$dep_var)) +\n    geom_histogram(bins = 30, fill = 'steelblue', color = 'white') +\n    theme_minimal()\n",
-        "} else {\n  dplyr::count(params$data, !!sym(params$dep_var))\n}\n```"
+        "} else {\n  dplyr::count(params$data, !!sym(params$dep_var))\n}\n
+"
       )
       writeLines(rmd, temp_rmd)
       rmarkdown::render(temp_rmd, output_file = file,
